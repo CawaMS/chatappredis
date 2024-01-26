@@ -7,21 +7,20 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Connectors.Redis;
 using Microsoft.SemanticKernel.Text;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using StackExchange.Redis;
 
-string aoaiEndpoint = "https://<your_Azure_openai_name>.openai.azure.com/";
-string aoaiApiKey = "Azure+openai_access_key";
-string redisConnection = "Connection_String_for_Redis_Cache_With_RediSearch_Module";
-string aoaiModel = "gpt_model_name";
-string aoaiEmbeddingModel = "ada_model_name";
+var config = new ConfigurationBuilder().AddUserSecrets<Program>().Build();
 
-//Kernel kernel = 
-//    new IKernelBuilder().WithAzureOpenAIChatCompletionService(aoaiModel, aoaiEndpoint, aoaiApiKey)
-//    .Build();
+string aoaiEndpoint = config["aoaiEndpoint"];
+string aoaiApiKey = config["aoaiApiKey"];
+string redisConnection = config["redisConnection"];
+string aoaiModel = config["aoaiModel"];
+string aoaiEmbeddingModel = config["aoaiEmbeddingModel"];
 
 var builder = Kernel.CreateBuilder();
 builder.AddAzureOpenAIChatCompletion(aoaiModel, aoaiEndpoint, aoaiApiKey);
@@ -73,6 +72,7 @@ using (HttpClient client = new())
 string TimePrompt = @$"
 Today is: {DateTime.UtcNow:r}
 Current time is: {DateTime.UtcNow:r}
+Time now is: {DateTime.UtcNow:r}
 
 Answer to the following questions using JSON syntax, including the data used.
 Is it morning, afternoon, evening, or night (morning/afternoon/evening/night)?
