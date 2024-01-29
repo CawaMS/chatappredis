@@ -13,6 +13,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using StackExchange.Redis;
+using chatapp;
 
 var config = new ConfigurationBuilder().AddUserSecrets<Program>().Build();
 
@@ -21,6 +22,11 @@ string aoaiApiKey = config["aoaiApiKey"];
 string redisConnection = config["redisConnection"];
 string aoaiModel = config["aoaiModel"];
 string aoaiEmbeddingModel = config["aoaiEmbeddingModel"];
+const string userMessageSet = "userMessageSet";
+const string assistantMessageSet = "assistantMessageSet";
+const string systemMessageSet = "systemMessageSet";
+
+RedisConnection _redisConnection = await RedisConnection.InitializeAsync(config["redisConnection"]);
 
 var builder = Kernel.CreateBuilder();
 builder.AddAzureOpenAIChatCompletion(aoaiModel, aoaiEndpoint, aoaiApiKey);
@@ -51,21 +57,21 @@ ISemanticTextMemory memory = new MemoryBuilder()
 #pragma warning restore SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning restore SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 #pragma warning restore SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-using (HttpClient client = new())
-{
-    string s = await client.GetStringAsync("https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/");
-#pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-    List<string> paragraphs =
-        TextChunker.SplitPlainTextParagraphs(
-            TextChunker.SplitPlainTextLines(
-                WebUtility.HtmlDecode(Regex.Replace(s, @"<[^>]+>|&nbsp;", "")),
-                128),
-            1024);
-#pragma warning restore SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+//using (HttpClient client = new())
+//{
+//    string s = await client.GetStringAsync("https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/");
+//#pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+//    List<string> paragraphs =
+//        TextChunker.SplitPlainTextParagraphs(
+//            TextChunker.SplitPlainTextLines(
+//                WebUtility.HtmlDecode(Regex.Replace(s, @"<[^>]+>|&nbsp;", "")),
+//                128),
+//            1024);
+//#pragma warning restore SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-    for (int i = 0; i < paragraphs.Count; i++)
-        await memory.SaveInformationAsync(collectionName, paragraphs[i], $"paragraph{i}");
-}
+//    for (int i = 0; i < paragraphs.Count; i++)
+//        await memory.SaveInformationAsync(collectionName, paragraphs[i], $"paragraph{i}");
+//}
 
 
 
@@ -88,8 +94,29 @@ var promptFunction = kernel.CreateFunctionFromPrompt(
     "
 );
 
-// Create a new chat
-ChatHistory chat = [new ChatMessageContent(AuthorRole.System, "You are an AI assistant that helps people find information.")];
+// Fetch chat history or create a new chat
+ChatHistory chat = new ChatHistory();
+
+Console.WriteLine("Enter username");
+var _userName = Console.ReadLine();
+
+var savedSystemMessages = await _redisConnection.BasicRetryAsync(async (db) => (await db.SetMembersAsync(_userName+":"+systemMessageSet)));
+
+if (savedSystemMessages.Any())
+{
+    foreach (var message in savedSystemMessages)
+    {
+        chat.AddSystemMessage(message.ToString());
+    }
+}
+else 
+{
+    Console.WriteLine("Enter your preferred chat style");
+    var _systemMessage = Console.ReadLine();
+    chat.AddSystemMessage("You are an AI assistant that helps people find information." + _systemMessage);
+    await _redisConnection. BasicRetryAsync(async (db) => (await db.SetAddAsync(_userName+":"+systemMessageSet, "You are an AI assistant that helps people find information." + _systemMessage)));
+}
+
 StringBuilder stbuilder = new();
 
 // Start the chat loop
