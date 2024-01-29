@@ -27,7 +27,13 @@ dotnet user-secrets set "aoaiApiKey" "your_azureopenai_key"
 dotnet build
 dotnet run
 ```
-4. The command will prompt you to ask question. You can ask the following questions to test the app is running correctly:
+4. The chat application will ask your name at the beginning. If it finds your name and preferences in the cache, it will not prompt you for the preferences, and instead will directly jump to the question/answers prompt. Else it will ask for your preferences and talk to you in a certain tone. For example, you and ask it to "talk in poetic style", it will return all the answers in the lines of poets!
+
+    ![Poetic answers from gpt](./images/poetic-answer-from-gpt.png)
+
+    ![Cached user prefrence](./images/Cached-system-prompt.png)
+
+5. The command will prompt you to ask question. You can ask the following questions to test the app is running correctly:
     
     * What is the current time? *This question is from the embedded function in the system prompt. ChatGPT cannot answer such questions by itself as it's only a language model that doesn't have knowledge on real time values*
     * Tell me a joke. Then followed by Why is this joke funny? *These two questions test the chat history is working properly. By default each question to chatgpt is a separate session. Unless stored in chat history, the conversation doesn't have previous context info*
