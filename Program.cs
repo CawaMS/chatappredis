@@ -15,6 +15,10 @@ using System.Text.RegularExpressions;
 using StackExchange.Redis;
 using chatapp;
 
+#pragma warning disable SKEXP0003
+#pragma warning disable SKEXP0011
+#pragma warning disable SKEXP0027
+
 var config = new ConfigurationBuilder().AddUserSecrets<Program>().Build();
 
 string aoaiEndpoint = config["aoaiEndpoint"];
@@ -22,41 +26,28 @@ string aoaiApiKey = config["aoaiApiKey"];
 string redisConnection = config["redisConnection"];
 string aoaiModel = config["aoaiModel"];
 string aoaiEmbeddingModel = config["aoaiEmbeddingModel"];
+const string systemMessageSet = "systemMessageSet";
 const string userMessageSet = "userMessageSet";
 const string assistantMessageSet = "assistantMessageSet";
-const string systemMessageSet = "systemMessageSet";
 
-RedisConnection _redisConnection = await RedisConnection.InitializeAsync(config["redisConnection"]);
+RedisConnection _redisConnection = await RedisConnection.InitializeAsync(redisConnection);
 
 var builder = Kernel.CreateBuilder();
 builder.AddAzureOpenAIChatCompletion(aoaiModel, aoaiEndpoint, aoaiApiKey);
-#pragma warning disable SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 builder.AddAzureOpenAITextEmbeddingGeneration("TextEmbeddingAda002_1", aoaiEndpoint, aoaiApiKey);
-#pragma warning restore SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 Kernel kernel = builder.Build();
 
 // See https://stackexchange.github.io/StackExchange.Redis/Basics#basic-usage
 ConnectionMultiplexer connectionMultiplexer = await ConnectionMultiplexer.ConnectAsync(redisConnection);
 IDatabase database = connectionMultiplexer.GetDatabase();
-#pragma warning disable SKEXP0027 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 RedisMemoryStore memoryStore = new RedisMemoryStore(database, vectorSize: 1536);
-#pragma warning restore SKEXP0027 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-
-#pragma warning restore SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning restore SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 string collectionName = "Fsharpupdate";
-#pragma warning disable SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning disable SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning disable SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 ISemanticTextMemory memory = new MemoryBuilder()
         .WithLoggerFactory(kernel.LoggerFactory)
         .WithMemoryStore(memoryStore)
         .WithAzureOpenAITextEmbeddingGeneration(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
         .Build();
-#pragma warning restore SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning restore SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning restore SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 //using (HttpClient client = new())
 //{
 //    string s = await client.GetStringAsync("https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/");
@@ -72,8 +63,6 @@ ISemanticTextMemory memory = new MemoryBuilder()
 //    for (int i = 0; i < paragraphs.Count; i++)
 //        await memory.SaveInformationAsync(collectionName, paragraphs[i], $"paragraph{i}");
 //}
-
-
 
 string TimePrompt = @$"
 Today is: {DateTime.UtcNow:r}
@@ -94,12 +83,12 @@ var promptFunction = kernel.CreateFunctionFromPrompt(
     "
 );
 
-// Fetch chat history or create a new chat
-ChatHistory chat = new ChatHistory();
-
 Console.WriteLine("Enter username");
 var _userName = Console.ReadLine();
 
+ChatHistory chat = new ChatHistory();
+
+//initialize chat history with system message
 var savedSystemMessages = await _redisConnection.BasicRetryAsync(async (db) => (await db.SetMembersAsync(_userName+":"+systemMessageSet)));
 
 if (savedSystemMessages.Any())
@@ -114,8 +103,31 @@ else
     Console.WriteLine("Enter your preferred chat style");
     var _systemMessage = Console.ReadLine();
     chat.AddSystemMessage("You are an AI assistant that helps people find information." + _systemMessage);
-    await _redisConnection. BasicRetryAsync(async (db) => (await db.SetAddAsync(_userName+":"+systemMessageSet, "You are an AI assistant that helps people find information." + _systemMessage)));
+    await _redisConnection.BasicRetryAsync(async (db) => (await db.SetAddAsync(_userName+":"+systemMessageSet, "You are an AI assistant that helps people find information. " + _systemMessage)));
 }
+
+// initialize chat history with saved user messages and assistant messages
+RedisValue[] userMsgList = await _redisConnection.BasicRetryAsync(async (db) => (await db.HashValuesAsync(_userName+":"+userMessageSet)));
+if (userMsgList.Any())
+{
+    foreach (var userMsg in userMsgList)
+    {
+        chat.AddUserMessage(userMsg.ToString());
+    }
+}
+
+RedisValue[] assistantMsgList = await _redisConnection.BasicRetryAsync(async (db) => (await db.HashValuesAsync(_userName+":"+assistantMessageSet)));
+if (assistantMsgList.Any())
+{
+    foreach (var assistantMsg in assistantMsgList)
+    {
+        chat.AddAssistantMessage(assistantMsg.ToString());
+    }
+}
+
+
+
+
 
 StringBuilder stbuilder = new();
 
@@ -134,9 +146,13 @@ while (true)
         stbuilder.Insert(0, "Here's some additional information: ");
         contextToRemove = chat.Count;
         chat.AddUserMessage(stbuilder.ToString());
+       
     }
 
     chat.AddUserMessage(question);
+
+    await _redisConnection.BasicRetryAsync(async (_db) => _db.HashSetAsync($"{_userName}:{userMessageSet}", [new HashEntry(new RedisValue(Utility.GetTimestamp()), question)]));
+
 
     stbuilder.Clear();
     await foreach (StreamingChatMessageContent message in kernel.InvokeStreamingAsync<StreamingChatMessageContent>(
@@ -152,7 +168,11 @@ while (true)
     }
     Console.WriteLine();
     chat.AddAssistantMessage(stbuilder.ToString());
+    await _redisConnection.BasicRetryAsync(async (db) => db.HashSetAsync($"{_userName}:{assistantMessageSet}", [new HashEntry(new RedisValue(Utility.GetTimestamp()), stbuilder.ToString())]));
+
+
 
     if (contextToRemove >= 0) chat.RemoveAt(contextToRemove);
     Console.WriteLine();
+
 }
