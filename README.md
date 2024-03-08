@@ -38,3 +38,21 @@ dotnet run
     * What is the current time? *This question is from the embedded function in the system prompt. ChatGPT cannot answer such questions by itself as it's only a language model that doesn't have knowledge on real time values*
     * Tell me a joke. Then followed by Why is this joke funny? *These two questions test the chat history is working properly. By default each question to chatgpt is a separate session. Unless stored in chat history, the conversation doesn't have previous context info*
     * What is the F# FS0010 error, and how to trouble shoot it? *This question will find answer in the blog post https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/ which is released after gpt35 is trained. The application can answer this question because the content of the blog is saved in the external memory store as vector embeddings in Redis*
+
+6. This sample also uses Redis to save the chat history objects. The approach is to use Hashset for user messages and assistant messages that belong to a specific user. The advantages for using Redis for chat history are:
+    * Efficient resource utilization. Memory is scarce resource on the application server.
+    * Improving application's resiliency. in the case of server failover, chat session can be restored
+    * Memory across multiple sessions to improve user experience. The chat history can be retained for as many sessions as needed
+
+For example, if you asked the chat application to tell you a joke earlier. Then close the application. Then run it again. Without using Redis to cache the chat history, if you ask why the earlier joke was funny it will respond with no context at all. 
+
+    ![no chat history](./images/no-chat-history.png)
+
+Now, with chat history, if you ask the chat application why the joke was funny after restart, it will remeber the previous context.
+    ![with chat history](./images/with-chat-history-in-redis.png)
+
+The user and assistant messages are stored using Hashset in Redis.
+
+    ![user messages](./images/saved-user-messages.png)
+
+    ![assistant message](./images/saved-assistant-messages.png)
