@@ -14,6 +14,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using StackExchange.Redis;
 
+#pragma warning disable SKEXP0003
+#pragma warning disable SKEXP0011
+#pragma warning disable SKEXP0027
+#pragma warning disable SKEXP0055
+
 var config = new ConfigurationBuilder().AddUserSecrets<Program>().Build();
 
 string aoaiEndpoint = config["aoaiEndpoint"];
@@ -24,44 +29,31 @@ string aoaiEmbeddingModel = config["aoaiEmbeddingModel"];
 
 var builder = Kernel.CreateBuilder();
 builder.AddAzureOpenAIChatCompletion(aoaiModel, aoaiEndpoint, aoaiApiKey);
-#pragma warning disable SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 builder.AddAzureOpenAITextEmbeddingGeneration("TextEmbeddingAda002_1", aoaiEndpoint, aoaiApiKey);
-#pragma warning restore SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 Kernel kernel = builder.Build();
 
 // See https://stackexchange.github.io/StackExchange.Redis/Basics#basic-usage
 ConnectionMultiplexer connectionMultiplexer = await ConnectionMultiplexer.ConnectAsync(redisConnection);
 IDatabase database = connectionMultiplexer.GetDatabase();
-#pragma warning disable SKEXP0027 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 RedisMemoryStore memoryStore = new RedisMemoryStore(database, vectorSize: 1536);
-#pragma warning restore SKEXP0027 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-#pragma warning restore SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning restore SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 string collectionName = "Fsharpupdate";
-#pragma warning disable SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning disable SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning disable SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 ISemanticTextMemory memory = new MemoryBuilder()
         .WithLoggerFactory(kernel.LoggerFactory)
         .WithMemoryStore(memoryStore)
         .WithAzureOpenAITextEmbeddingGeneration(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
         .Build();
-#pragma warning restore SKEXP0011 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning restore SKEXP0052 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-#pragma warning restore SKEXP0003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
 using (HttpClient client = new())
 {
     string s = await client.GetStringAsync("https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/");
-#pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
     List<string> paragraphs =
         TextChunker.SplitPlainTextParagraphs(
             TextChunker.SplitPlainTextLines(
                 WebUtility.HtmlDecode(Regex.Replace(s, @"<[^>]+>|&nbsp;", "")),
                 128),
             1024);
-#pragma warning restore SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
     for (int i = 0; i < paragraphs.Count; i++)
         await memory.SaveInformationAsync(collectionName, paragraphs[i], $"paragraph{i}");
