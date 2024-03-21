@@ -1,10 +1,11 @@
 ﻿using StackExchange.Redis;
 using System;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GameLeaderboard
+namespace chatapp
 {
     public class RedisConnection : IDisposable
     {
@@ -28,6 +29,7 @@ namespace GameLeaderboard
         private readonly string _connectionString;
         private ConnectionMultiplexer _connection;
         private IDatabase _database;
+        private IServer _server;
 
         private RedisConnection(string connectionString)
         {
@@ -41,6 +43,11 @@ namespace GameLeaderboard
 
             return redisConnection;
         }
+
+        //public IServer GetServer()
+        //{
+        //    return _server;
+        //}
 
         // In real applications, consider using a framework such as
         // Polly to make it easier to customize the retry approach.
@@ -164,6 +171,10 @@ namespace GameLeaderboard
                 Interlocked.Exchange(ref _lastReconnectTicks, utcNow.UtcTicks);
                 IDatabase newDatabase = _connection.GetDatabase();
                 Interlocked.Exchange(ref _database, newDatabase);
+
+                //IServer newServer = _connection.GetServer(_connection.GetEndPoints()[0]);
+                //Interlocked.Exchange(ref _server, newServer);
+
             }
             finally
             {
