@@ -41,11 +41,6 @@ ConnectionMultiplexer connectionMultiplexer = await ConnectionMultiplexer.Connec
 IDatabase database = connectionMultiplexer.GetDatabase();
 RedisMemoryStore memoryStore = new RedisMemoryStore(database, vectorSize: 1536);
 string collectionName = "Fsharpupdate";
-//ISemanticTextMemory memory = new MemoryBuilder()
-//        .WithLoggerFactory(kernel.LoggerFactory)
-//        .WithMemoryStore(memoryStore)
-//        .WithAzureOpenAITextEmbeddingGeneration(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
-//        .Build();
 var memory = new SemanticTextMemory(
     memoryStore,
     new AzureOpenAITextEmbeddingGenerationService(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
