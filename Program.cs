@@ -1,22 +1,15 @@
-﻿using Azure.AI.OpenAI;
-using Azure.Core;
-using Json.Schema.Generation.Intents;
-using Microsoft.SemanticKernel;
+﻿using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Connectors.Redis;
-using Microsoft.SemanticKernel.Text;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using StackExchange.Redis;
 using chatapp;
 
-#pragma warning disable SKEXP0003
-#pragma warning disable SKEXP0011
+#pragma warning disable SKEXP0001
+#pragma warning disable SKEXP0010
 #pragma warning disable SKEXP0027
 
 //add user secret config
@@ -48,11 +41,15 @@ ConnectionMultiplexer connectionMultiplexer = await ConnectionMultiplexer.Connec
 IDatabase database = connectionMultiplexer.GetDatabase();
 RedisMemoryStore memoryStore = new RedisMemoryStore(database, vectorSize: 1536);
 string collectionName = "Fsharpupdate";
-ISemanticTextMemory memory = new MemoryBuilder()
-        .WithLoggerFactory(kernel.LoggerFactory)
-        .WithMemoryStore(memoryStore)
-        .WithAzureOpenAITextEmbeddingGeneration(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
-        .Build();
+//ISemanticTextMemory memory = new MemoryBuilder()
+//        .WithLoggerFactory(kernel.LoggerFactory)
+//        .WithMemoryStore(memoryStore)
+//        .WithAzureOpenAITextEmbeddingGeneration(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
+//        .Build();
+var memory = new SemanticTextMemory(
+    memoryStore,
+    new AzureOpenAITextEmbeddingGenerationService(aoaiEmbeddingModel, aoaiEndpoint, aoaiApiKey)
+    );
 
 //Converting a blog post online into Vector Embeddings and save in Redis.
 //This section is commented out intentionally because the chat app doesn't have to convert a blog into vector everytime. 
