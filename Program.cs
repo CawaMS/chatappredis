@@ -7,10 +7,14 @@ using Microsoft.Extensions.Configuration;
 using System.Text;
 using StackExchange.Redis;
 using chatapp;
+using Microsoft.SemanticKernel.Text;
+using System.Net;
+using System.Text.RegularExpressions;
 
 #pragma warning disable SKEXP0001
 #pragma warning disable SKEXP0010
 #pragma warning disable SKEXP0027
+#pragma warning disable SKEXP0050
 
 //add user secret config
 var config = new ConfigurationBuilder().AddUserSecrets<Program>().Build();
@@ -48,21 +52,21 @@ var memory = new SemanticTextMemory(
 
 //Converting a blog post online into Vector Embeddings and save in Redis.
 //This section is commented out intentionally because the chat app doesn't have to convert a blog into vector everytime. 
-//using (HttpClient client = new())
-//{
-//    string s = await client.GetStringAsync("https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/");
-//#pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-//    List<string> paragraphs =
-//        TextChunker.SplitPlainTextParagraphs(
-//            TextChunker.SplitPlainTextLines(
-//                WebUtility.HtmlDecode(Regex.Replace(s, @"<[^>]+>|&nbsp;", "")),
-//                128),
-//            1024);
-//#pragma warning restore SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+using (HttpClient client = new())
+{
+    string s = await client.GetStringAsync("https://devblogs.microsoft.com/dotnet/overhauled-fsharp-code-fixes-in-visual-studio/");
+#pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+    List<string> paragraphs =
+        TextChunker.SplitPlainTextParagraphs(
+            TextChunker.SplitPlainTextLines(
+                WebUtility.HtmlDecode(Regex.Replace(s, @"<[^>]+>|&nbsp;", "")),
+                128),
+            1024);
+#pragma warning restore SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-//    for (int i = 0; i < paragraphs.Count; i++)
-//        await memory.SaveInformationAsync(collectionName, paragraphs[i], $"paragraph{i}");
-//}
+    for (int i = 0; i < paragraphs.Count; i++)
+        await memory.SaveInformationAsync(collectionName, paragraphs[i], $"paragraph{i}");
+}
 
 //Custom function to get current time - this is something ChatGPT doesn't know about.
 string TimePrompt = @$"
