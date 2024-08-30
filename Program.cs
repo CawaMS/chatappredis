@@ -43,14 +43,12 @@ do
     
 
     // Get response from the AI
-    //var result = await chatCompletionService.GetChatMessageContentAsync(history, kernel: kernel);
-
     ChatMessageContent result  = await chatCompletionService.GetChatMessageContentAsync(history, kernel: kernel);
 
     // Print the results
     Console.WriteLine("Assistance > " + result);
 
-    //Add the message from the agennt to the chat history
+    // Add the message from the agennt to the chat history
     history.AddMessage(result.Role, result.Content ?? string.Empty);
 
 } while (userInput is not null);
