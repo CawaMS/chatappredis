@@ -16,7 +16,7 @@ string AOAI_apiKey = config["AOAI:apiKey"] ?? "";
 var builder = Kernel.CreateBuilder().AddAzureOpenAIChatCompletion(AOAI_deploymentName, AOAI_endPoint, AOAI_apiKey);
 
 // Add Enterprise components
-builder.Services.AddLogging(services => services.AddConsole().SetMinimumLevel(LogLevel.Trace));
+builder.Services.AddLogging(services => services.AddConsole().SetMinimumLevel(LogLevel.Error));
 
 // Build the kernel
 Kernel kernel = builder.Build();
@@ -36,10 +36,16 @@ do
     userInput = Console.ReadLine();
 
     // Add user input
-    history.AddUserMessage(userInput);
+    if (userInput is not null)
+    {
+        history.AddUserMessage(userInput);
+    }
+    
 
     // Get response from the AI
-    var result = await chatCompletionService.GetChatMessageContentAsync(history, kernel: kernel);
+    //var result = await chatCompletionService.GetChatMessageContentAsync(history, kernel: kernel);
+
+    ChatMessageContent result  = await chatCompletionService.GetChatMessageContentAsync(history, kernel: kernel);
 
     // Print the results
     Console.WriteLine("Assistance > " + result);
