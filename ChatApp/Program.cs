@@ -33,29 +33,26 @@ var builder = Kernel
 
 
 // Add Enterprise components
-builder.Services.AddLogging(services => services.AddConsole().SetMinimumLevel(LogLevel.Trace));
+builder.Services.AddLogging(services => services.AddConsole().SetMinimumLevel(LogLevel.Error));
 
 // Build the kernel
 Kernel kernel = builder.Build();
 
+// Retrieve the chat completion service from the Kernel.
 var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+// Retrieve the embedding service from the Kernel.
+ITextEmbeddingGenerationService embeddingService = kernel.Services.GetRequiredService<ITextEmbeddingGenerationService>();
 
 // Initialize a memory store using the redis database
-// Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(REDIS_connectionString);
 IDatabase _db = connection.GetDatabase();
 IMemoryStore memoryStore = new RedisMemoryStore(_db);
-
-// Retrieve the embedding service from the Kernel.
-ITextEmbeddingGenerationService embeddingService =
-    kernel.Services.GetRequiredService<ITextEmbeddingGenerationService>();
 
 // Initialize a SemanticTextMemory using the memory store and embedding generation service.
 SemanticTextMemory textMemory = new(memoryStore, embeddingService);
 
 // Initialize a TextMemoryPlugin using the text memory.
 TextMemoryPlugin memoryPlugin = new(textMemory);
-
 // Import the text memory plugin into the Kernel.
 KernelPlugin memory = kernel.ImportPluginFromObject(memoryPlugin);
 
@@ -76,7 +73,6 @@ do
     // Add user input
     if (userInput is not null)
     {
-        //history.AddUserMessage(userInput);
         // Retrieve a memory with the Kernel.
         FunctionResult searchResult = await kernel.InvokeAsync(
             memory["Recall"],
@@ -89,6 +85,7 @@ do
             }
         );
 
+        // User the result to augment the prompt
         string? resultStr = searchResult.GetValue<string>();
         userInput += resultStr;
         history.AddUserMessage(userInput ?? string.Empty);
