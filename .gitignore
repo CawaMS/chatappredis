@@ -1,0 +1,9 @@
+.vs
+.vs/
+.vs/*
+ChatApp/bin/
+ChatApp/obj/
+SKMemoryIngest/bin/
+SKMemoryIngest/obj/
+SKVectorIngest/bin/
+SKVectorIngest/obj/
