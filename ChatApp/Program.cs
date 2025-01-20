@@ -46,7 +46,7 @@ ITextEmbeddingGenerationService embeddingService = kernel.Services.GetRequiredSe
 // Initialize a memory store using the redis database
 ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(REDIS_connectionString);
 IDatabase _db = connection.GetDatabase();
-IMemoryStore memoryStore = new RedisMemoryStore(_db);
+RedisMemoryStore memoryStore = new RedisMemoryStore(_db);
 
 // Initialize a SemanticTextMemory using the memory store and embedding generation service.
 SemanticTextMemory textMemory = new(memoryStore, embeddingService);
@@ -80,15 +80,13 @@ do
             {
                 [TextMemoryPlugin.InputParam] = "Ask: "+userInput,
                 [TextMemoryPlugin.CollectionParam] = "sk-documentation2",
-                [TextMemoryPlugin.LimitParam] = "2",
-                [TextMemoryPlugin.RelevanceParam] = "0.5",
+                [TextMemoryPlugin.LimitParam] = 2,
+                [TextMemoryPlugin.RelevanceParam] = 0.5
             }
         );
 
         // User the result to augment the prompt
-        string? resultStr = searchResult.GetValue<string>();
-        userInput += resultStr;
-        history.AddUserMessage(userInput ?? string.Empty);
+        history.AddUserMessage(userInput + searchResult.GetValue<string>());
     }
 
     // Get response from the AI

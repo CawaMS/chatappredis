@@ -25,6 +25,7 @@
     <PackageReference Include="Microsoft.SemanticKernel.PromptTemplate.Handlebars" Version="1.0.0-rc3" />
     <PackageReference Include="NRedisStack" Version="0.12.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
 </Project>
